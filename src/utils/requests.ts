@@ -10,7 +10,8 @@ import mockData from "../mock-data.json"
 
 const TRANSACTIONS_PER_PAGE = 5
 
-const data: { employees: Employee[]; transactions: Transaction[] } = {
+// Modified from const to let
+let data: { employees: Employee[]; transactions: Transaction[] } = {
   employees: mockData.employees,
   transactions: mockData.transactions,
 }
@@ -47,8 +48,16 @@ export const getTransactionsByEmployee = ({ employeeId }: RequestByEmployeeParam
   return data.transactions.filter((transaction) => transaction.employee.id === employeeId)
 }
 
-export const setTransactionApproval = ({ transactionId, value }: SetTransactionApprovalParams): void => {
-  const transaction = data.transactions.find(
+export const setTransactionApproval = ({ transactionId, value }: SetTransactionApprovalParams): any => {
+  const idx = data.transactions.findIndex(
+    (currentTransaction) => currentTransaction.id === transactionId
+  )
+  if (idx === -1) {
+    throw new Error("Invalid transaction to approve")
+  }
+  data.transactions[idx].approved = value
+  return data.transactions[idx]
+  /* const transaction = data.transactions.find(
     (currentTransaction) => currentTransaction.id === transactionId
   )
 
@@ -57,4 +66,5 @@ export const setTransactionApproval = ({ transactionId, value }: SetTransactionA
   }
 
   transaction.approved = value
+  return transaction */
 }

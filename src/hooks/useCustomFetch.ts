@@ -4,7 +4,7 @@ import { fakeFetch, RegisteredEndpoints } from "../utils/fetch"
 import { useWrappedRequest } from "./useWrappedRequest"
 
 export function useCustomFetch() {
-  const { cache } = useContext(AppContext)
+  const { cache, dirtyPages } = useContext(AppContext)
   const { loading, wrappedRequest } = useWrappedRequest()
 
   const fetchWithCache = useCallback(
@@ -15,17 +15,49 @@ export function useCustomFetch() {
       wrappedRequest<TData>(async () => {
         const cacheKey = getCacheKey(endpoint, params)
         const cacheResponse = cache?.current.get(cacheKey)
+        let flagDirty = false
 
         if (cacheResponse) {
           const data = JSON.parse(cacheResponse)
-          return data as Promise<TData>
-        }
 
+          //if (endpoint === "employees") {
+          // Employee[]
+          // need not check for dirty page
+          //} else
+          if (endpoint === "paginatedTransactions") {
+            // PaginatedResponse Employee[]
+            for (let page of data.data) {
+              //let page = data[i]
+              if (dirtyPages?.current.has(page.id)) {
+                dirtyPages?.current.delete(data.id)
+                // need to clear all dirty entries matching
+                flagDirty = true
+              }
+            }
+          } else if (endpoint === "transactionsByEmployee") {
+            // Transaction[]
+            for (let page of data) {
+              if (dirtyPages?.current.has(page.id)) {
+                dirtyPages?.current.delete(data.id)
+                // need to clear all dirty entries matching
+                flagDirty = true
+              }
+            }
+          }
+
+          if (!flagDirty) {
+            return data as Promise<TData>
+          } else {
+            const result = await fakeFetch<TData>(endpoint, params)
+            cache?.current.set(cacheKey, JSON.stringify(result))
+            return result
+          }
+        }
         const result = await fakeFetch<TData>(endpoint, params)
         cache?.current.set(cacheKey, JSON.stringify(result))
         return result
       }),
-    [cache, wrappedRequest]
+    [cache, dirtyPages, wrappedRequest]
   )
 
   const fetchWithoutCache = useCallback(
@@ -38,6 +70,14 @@ export function useCustomFetch() {
         return result
       }),
     [wrappedRequest]
+  )
+
+  const markDirty = useCallback(
+    async (transactionId: string) => {
+      dirtyPages?.current.add(transactionId)
+      console.log("Now dirty", transactionId)
+    },
+    [dirtyPages]
   )
 
   const clearCache = useCallback(() => {
@@ -67,7 +107,7 @@ export function useCustomFetch() {
     [cache]
   )
 
-  return { fetchWithCache, fetchWithoutCache, clearCache, clearCacheByEndpoint, loading }
+  return { fetchWithCache, fetchWithoutCache, clearCache, clearCacheByEndpoint, loading, markDirty }
 }
 
 function getCacheKey(endpoint: RegisteredEndpoints, params?: object) {

@@ -10,12 +10,16 @@ type UseTypeBaseAllResult<TValue> = UseTypeBaseResult<TValue> & {
   fetchAll: () => Promise<void>
 }
 
+type PaginatedAllResult<TValue> = UseTypeBaseAllResult<TValue> & {
+  checkNextPage: () => Promise<boolean>
+}
+
 type UseTypeBaseByIdResult<TValue> = UseTypeBaseResult<TValue> & {
   fetchById: (id: string) => Promise<void>
 }
 
 export type EmployeeResult = UseTypeBaseAllResult<Employee[] | null>
 
-export type PaginatedTransactionsResult = UseTypeBaseAllResult<PaginatedResponse<Transaction[]> | null>
+export type PaginatedTransactionsResult = PaginatedAllResult<PaginatedResponse<Transaction[]> | null>
 
 export type TransactionsByEmployeeResult = UseTypeBaseByIdResult<Transaction[] | null>
